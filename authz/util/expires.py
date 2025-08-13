@@ -1,7 +1,7 @@
-from dateTime import timedalta
+from datetime import timedelta
 
 from authz.config import config
 from authz.util import now
 
 def user_expires_at():
-	return now() + timedelta(days=config.USER_DEFAULT_EXPIRY_TIME)
+    return now() + timedelta(days=config.USER_DEFAULT_EXPIRY_TIME)
