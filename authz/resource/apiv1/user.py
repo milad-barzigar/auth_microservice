@@ -1,6 +1,6 @@
 from flask_restful import Resource
 
-from authz.controller .apiv1 import UserController
+from authz.controller.apiv1 import UserController
 
 class UserResource(Resource):
     def get(self, user_id=None):
