@@ -1,2 +1,7 @@
-from authz.resource import apiv1
+
+from .apiv1.auth import AuthResource
+
+__all__ = [
+    "AuthResource",
+]
 

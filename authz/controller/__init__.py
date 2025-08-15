@@ -1,1 +1,2 @@
-from authz.controller import apiv1
+from .user import UserController
+
