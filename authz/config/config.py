@@ -9,7 +9,7 @@ class Config:
     TESTING = bool(int(os.environ.get("TECHLAND_AUTHZ_TESTING", "0")))
     SECRET_KEY = os.environ.get("TECHLAND_AUTHZ_SECRET_KEY", "HARD-HARD-HARD-SECRET-KEY")
     TIMEZONE = os.environ.get("TECHLAND_AUTHZ_TIMEZONE", "Asia/Tehran")
-
+    JWT_ALGO = os.environ.get("TECHLAND_AUTHZ_JWT_ALGO", "HS512")
     # ----------------- Database config -----------------
     
     SQLALCHEMY_DATABASE_URI = os.environ.get("TECHLAND_AUTHZ_DATABASE_URI", "sqlite:///mydb.db")
@@ -19,10 +19,13 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ----------------- User config -----------------
+    USER_ENABLED_STATUS = 1
+    USER_ACTIVATED_STATUS = 2
+    USER_ALL_STATUS = 3
     USER_DEFAULT_ROLE = os.environ.get("TECHLAND_AUTHZ_USER_DEFAULT_ROLE", "member")
     USER_DEFAULT_EXPIRY_TIME = int(os.environ.get("TECHLAND_AUTHZ_USER_DEFAULT_EXPIRY_TIME", "365"))
     USER_DEFAULT_STATUS = int(os.environ.get("TECHLAND_AUTHZ_USER_DEFAULT_STATUS", "3"))
-
-
-config = Config
+    USER_DEFAULT_TOKEN_EXPIRY_TIME = int(os.environ.get("TECHLAND_AUTHZ_USER_DEFAULT_TOKEN_EXPIRY_TIME", "46400"))
+   
+config = Config()
 

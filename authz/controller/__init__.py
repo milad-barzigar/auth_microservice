@@ -1,2 +1,2 @@
-from .user import UserController
+from .apiv1.user import UserController
 

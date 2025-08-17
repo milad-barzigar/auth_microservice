@@ -1,23 +1,11 @@
-from authz.authz import apiv1 as api
-from authz.resource.apiv1.auth import AuthResource
-from authz.resource.apiv1.user import UserResource
-api.add_resource(
-    AuthResource,
-    "/auth/tokens",
-    methods=["GET", "POST"],
-    endpoint="auth_tokens"
-)
-api.add_resource(
-    UserResource,
-    "/user",
-    methods=["GET", "POST"],   
-    endpoint="users"
-)
+# authz/resource/apiv1/__init__.py
 
-api.add_resource(
-    UserResource,
-    "/users/<user_id>",
-    methods=["GET", "PATCH", "DELETE"],
-    endpoint="user"
-)
+from .user import UserResource
+try:
+    from .auth import AuthResource
+except Exception:
+   
+    AuthResource = None
+
+__all__ = ["UserResource", "AuthResource"]
 

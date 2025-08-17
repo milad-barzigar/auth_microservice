@@ -1,50 +1,89 @@
-cat > authz/controller/apiv1/auth.py <<'PY'
-import os
-import datetime
-import jwt  # PyJWT
 from flask import request
+from jwt import encode
+from time import time
+from datetime import datetime, timezone
+
+from authz.authz import db
+from authz.config.config import Config
+from authz.model import User
+from authz.schema.apiv1 import UserSchema
 from authz.util import jsonify
 
+
 class AuthController:
-    def __init__(self):
-        self.secret = os.environ.get("JWT_SECRET", "dev-secret")
-        self.alg = os.environ.get("JWT_ALG", "HS256")
+    @staticmethod
+    def create_jwt_token():
+        if request.content_type != "application/json":
+            return jsonify(status=415, code=101)  # Invalid media type.
 
-    def create_jwt_token(self, payload: dict | None = None):
-        if payload is None:
-            payload = request.get_json(silent=True) or {}
-        if not isinstance(payload, dict):
-            payload = {}
+        user_schema = UserSchema(only=["username", "password"])
+        try:
+            user_data = user_schema.load(request.get_json())  # validate request
+        except Exception:
+            return jsonify(status=400, code=104)
 
-        now = datetime.datetime.utcnow()
-        payload = payload.copy()
-        payload.setdefault("iat", int(now.timestamp()))
-        payload.setdefault("exp", int((now + datetime.timedelta(hours=1)).timestamp()))
-
-        token = jwt.encode(payload, self.secret, algorithm=self.alg)
-        if isinstance(token, bytes):
-            token = token.decode("utf-8")
-
-        return jsonify(status=200, code=0, token=token), 200
-
-    def verify_jwt_token(self, token: str | None = None):
-        if token is None:
-            auth_header = request.headers.get("Authorization", "")
-            parts = auth_header.split()
-            if len(parts) == 2 and parts[0].lower() == "bearer":
-                token = parts[1]
-
-        if not token:
-            return jsonify(status=400, code=106, message="Missing token"), 400
+        username = user_data.get("username")
+        password = user_data.get("password")
+        if not username or not password:
+            return jsonify(status=400, code=105)
 
         try:
-            payload = jwt.decode(token, self.secret, algorithms=[self.alg])
-            return jsonify(status=200, code=0, data=payload), 200
-        except jwt.ExpiredSignatureError:
-            return jsonify(status=401, code=108, message="Token expired"), 401
-        except jwt.InvalidTokenError:
-            return jsonify(status=401, code=109, message="Invalid token"), 401
-        except Exception as e:
-            return jsonify(status=500, code=110, message=str(e)), 500
-PY
+            user = User.query.filter_by(username=username).first()
+        except Exception:
+            return jsonify(status=500, code=102)  # Database error
+
+        if user is None:
+            return jsonify(status=401, code=103)  # User not found
+
+        # TODO: Use a secure password hash check instead of plain comparison
+        if user.password != password:
+            user.failed_auth_at = datetime.now(timezone.utc)
+            user.failed_auth_count += 1
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            return jsonify(status=401, code=111)  # Invalid password
+
+        if user.expires_at and user.expires_at < datetime.now(timezone.utc):
+            return jsonify(status=401, code=108)  # User expired
+
+        if user.status != Config.USER_ACTIVE_STATUS:
+            return jsonify(status=401, code=109)  # Bad status
+
+        current_time = int(time())
+        try:
+            user_jwt_token = encode(
+                {
+                    "sub": user.id,
+                    "exp": current_time + Config.USER_DEFAULT_TOKEN_EXPIRY_TIME,
+                    "nbf": current_time,
+                    "data": {
+                        "id": user.id,
+                        "username": user.username,
+                        "role": user.role,
+                    }
+                },
+                Config.SECRET_KEY,
+                algorithm=Config.JWT_ALGO
+            )
+        except Exception:
+            return jsonify(status=500, code=110)  # Token encryption error
+
+        user.last_login_at = datetime.now(timezone.utc)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return jsonify(status=500, code=102)  # Database error
+
+        return jsonify(
+            status=200,
+            data={"user": UserSchema().dump(user)},
+            headers={"X-Subject-Token": user_jwt_token}
+        )
+
+    @staticmethod
+    def verify_jwt_token():
+        return jsonify(status=501, code=107)  # Not Implemented
 

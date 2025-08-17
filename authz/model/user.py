@@ -1,6 +1,6 @@
 from uuid import uuid4
 from authz.authz import db
-from authz.config import config
+from authz.config.config import config
 from datetime import datetime, timedelta
 
 def user_expires_at():
